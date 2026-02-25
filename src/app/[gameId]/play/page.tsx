@@ -272,7 +272,7 @@ export default function PlayPage() {
           <div className="bg-white rounded-xl border overflow-hidden" style={{ height: 500 }}>
             <iframe
               key={widgetKey}
-              src={`/${gameId}/play/widgets?token=${encodeURIComponent(playerToken || "")}`}
+              src={`/${gameId}/play/widgets`}
               className="w-full h-full border-0"
               title="Widgets"
             />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 
 interface ChatMessage {
   id: string;
@@ -15,14 +15,20 @@ const EMOJI_REACTIONS = ["🎉", "😂", "🔥", "👀", "💀", "🙌", "😱",
 
 export default function WidgetsPage() {
   const params = useParams<{ gameId: string }>();
-  const searchParams = useSearchParams();
   const gameId = params.gameId;
-  const token = searchParams.get("token") || "";
+
+  // Read token from localStorage (same origin as parent)
+  const [token, setToken] = useState("");
+  useEffect(() => {
+    const t = localStorage.getItem(`player:${gameId}`) || "";
+    setToken(t);
+  }, [gameId]);
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lastTsRef = useRef(0);
 
@@ -71,11 +77,16 @@ export default function WidgetsPage() {
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || !token) return;
+    if (!text) return;
+    if (!token) {
+      setError("Not authenticated — try refreshing the page");
+      return;
+    }
     setSending(true);
     setInput("");
+    setError("");
     try {
-      await fetch(`/api/games/${gameId}/chat`, {
+      const res = await fetch(`/api/games/${gameId}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,10 +94,14 @@ export default function WidgetsPage() {
         },
         body: JSON.stringify({ text }),
       });
-      // Immediately fetch to show our message
-      await fetchMessages();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to send");
+      } else {
+        await fetchMessages();
+      }
     } catch {
-      // ignore
+      setError("Network error");
     } finally {
       setSending(false);
     }
@@ -167,6 +182,9 @@ export default function WidgetsPage() {
           ))}
           <div ref={chatEndRef} />
         </div>
+        {error && (
+          <p className="text-red-500 text-xs px-3 py-1 bg-red-50">{error}</p>
+        )}
         <div className="p-2 border-t bg-white flex gap-2">
           <input
             type="text"
