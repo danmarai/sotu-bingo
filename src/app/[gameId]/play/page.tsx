@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useGameApi } from "@/hooks/use-game-api";
 import { usePolling } from "@/hooks/use-polling";
+import { useWidgetVersion } from "@/hooks/use-widget-version";
 import { GameBoard } from "@/components/GameBoard";
 import { Roster } from "@/components/Roster";
 import { CalledWords } from "@/components/CalledWords";
@@ -31,6 +32,15 @@ export default function PlayPage() {
   const [previewPlayer, setPreviewPlayer] = useState<PlayerSummary | null>(
     null
   );
+
+  // Widget version polling (30s) — key changes on new deploy
+  const { widgetKey } = useWidgetVersion();
+  const [playerName, setPlayerName] = useState<string>("");
+
+  // Load player name for widget
+  useEffect(() => {
+    setPlayerName(localStorage.getItem(`playerName:${gameId}`) || "Anon");
+  }, [gameId]);
 
   // Load credentials
   useEffect(() => {
@@ -185,7 +195,7 @@ export default function PlayPage() {
         )}
 
         {/* Main layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px_280px] gap-6">
           {/* Board */}
           <div>
             <GameBoard
@@ -256,6 +266,16 @@ export default function PlayPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Widgets panel — auto-reloads on new deploy */}
+          <div className="bg-white rounded-xl border overflow-hidden" style={{ height: 500 }}>
+            <iframe
+              key={widgetKey}
+              src={`/${gameId}/play/widgets?name=${encodeURIComponent(playerName)}`}
+              className="w-full h-full border-0"
+              title="Widgets"
+            />
           </div>
         </div>
       </div>
