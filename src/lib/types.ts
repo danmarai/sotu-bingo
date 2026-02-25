@@ -38,6 +38,15 @@ export interface WinnerRecord {
   wonAt: number;
 }
 
+// ── Chat Message ──
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  name: string;
+  text: string;
+  ts: number;
+}
+
 // ── Game Status ──
 export type GameStatus = "lobby" | "live" | "ended";
 
@@ -56,6 +65,8 @@ export interface GameState {
   winners: WinnerRecord[];
 
   players: Record<string, Player>; // playerId → Player
+
+  messages: ChatMessage[]; // chat messages (last 100)
 
   hostTokenHash: string;
   playerTokenHashes: Record<string, string>; // playerId → hash
@@ -85,6 +96,7 @@ export interface UISnapshot {
   myCheckedCount?: number;
   myPlace?: number | null;
   words?: Word[]; // included for host
+  messages?: ChatMessage[]; // chat messages
   version: number;
 }
 

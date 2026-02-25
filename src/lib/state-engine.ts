@@ -15,6 +15,7 @@ import type {
   GameState,
   UISnapshot,
   PlayerSummary,
+  ChatMessage,
   CreateGameResponse,
   JoinGameResponse,
   ToggleTileResponse,
@@ -96,6 +97,9 @@ export function buildSnapshot(
     snapshot.words = game.words;
   }
 
+  // Always include messages
+  snapshot.messages = game.messages || [];
+
   return snapshot;
 }
 
@@ -127,6 +131,7 @@ export async function createGame(
     called: [],
     nextPlace: 1,
     winners: [],
+    messages: [],
     players: {},
     hostTokenHash,
     playerTokenHashes: {},
@@ -342,6 +347,50 @@ export async function toggleCalled(
   await saveGame(game);
 
   return { called: game.called, version: game.version };
+}
+
+export async function sendMessage(
+  gameId: string,
+  authHeader: string | null,
+  text: string
+): Promise<{ messages: ChatMessage[]; version: number }> {
+  const game = await loadGame(gameId);
+  const playerId = requirePlayer(game, authHeader);
+
+  const trimmed = (text || "").trim();
+  if (!trimmed || trimmed.length > 200) {
+    throw new BadRequestError("Message must be 1–200 characters");
+  }
+
+  const player = game.players[playerId];
+  if (!game.messages) game.messages = [];
+
+  game.messages.push({
+    id: uuidv4(),
+    playerId,
+    name: player.name,
+    text: trimmed,
+    ts: Date.now(),
+  });
+
+  // Keep last 100 messages
+  if (game.messages.length > 100) {
+    game.messages = game.messages.slice(-100);
+  }
+
+  game.version++;
+  await saveGame(game);
+
+  return { messages: game.messages, version: game.version };
+}
+
+export async function getMessages(
+  gameId: string,
+  sinceTs: number
+): Promise<{ messages: ChatMessage[] }> {
+  const game = await loadGame(gameId);
+  const msgs = (game.messages || []).filter((m) => m.ts > sinceTs);
+  return { messages: msgs };
 }
 
 export async function pollGame(
